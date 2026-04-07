@@ -1,0 +1,3 @@
+@echo off
+echo Starting Email Triage AI Environment Server...
+uvicorn server.app:app --reload

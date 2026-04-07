@@ -1,0 +1,71 @@
+name: email-triage-env
+version: "1.0.0"
+description: >
+  A real-world email triage environment where an AI agent learns to
+  classify email category (spam or important) and its urgency. 
+  Simulates a corporate inbox triage workflow.
+
+author: NENAVATH SUNITHA
+license: MIT
+
+api:
+  reset: POST /reset
+  step:  POST /step
+  state: GET  /state
+  tasks: GET  /tasks
+
+tasks:
+  - id: easy
+    difficulty: easy
+    description: Classify obvious spam/important emails and their urgency.
+    action_space:
+      category:
+        type: string
+        enum: [spam, important]
+      urgency:
+        type: string
+        enum: [urgent, normal]
+    reward_range: [0.0, 1.0]
+
+  - id: medium
+    difficulty: medium
+    description: Classify a mix of promotional, informational, and critical emails.
+    action_space:
+      category:
+        type: string
+        enum: [spam, important]
+      urgency:
+        type: string
+        enum: [urgent, normal]
+    reward_range: [0.0, 1.0]
+
+  - id: hard
+    difficulty: hard
+    description: Classify ambiguous, real-world emails such as phishing attempts or subtle client communications.
+    action_space:
+      category:
+        type: string
+        enum: [spam, important]
+      urgency:
+        type: string
+        enum: [urgent, normal]
+    reward_range: [0.0, 1.0]
+
+observation_space:
+  task_id: string
+  email:
+    subject: string
+    email_text: string
+    sender: string
+
+runtime:
+  max_steps_per_episode: 1
+  inference_time_limit_minutes: 20
+  hardware: vcpu=2, memory=8gb
+
+inference:
+  script: inference.py
+  env_vars:
+    - API_BASE_URL
+    - HF_TOKEN
+    - MODEL_NAME
