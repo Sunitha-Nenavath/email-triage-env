@@ -2,8 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# This wildcard approach copies requirements whether it's flattened or nested
-COPY *requirements.txt server/requirements.tx[t] ./
+COPY server/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy all project files
