@@ -7,7 +7,8 @@ from pydantic import BaseModel
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-3.5-turbo")
-HF_TOKEN = os.getenv("HF_TOKEN", os.getenv("OPENAI_API_KEY", ""))
+HF_TOKEN = os.getenv("HF_TOKEN")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 if not HF_TOKEN:
     print("Warning: HF_TOKEN environment variable not set. Using dummy client behavior or expecting local API.")
@@ -17,7 +18,8 @@ client = OpenAI(
     base_url=API_BASE_URL,
 )
 
-SERVER_URL = "http://127.0.0.1:8000"
+# Evaluator typically provides SERVER_URL, fallback to 7860 (Dockerfile port)
+SERVER_URL = os.getenv("SERVER_URL", "http://127.0.0.1:7860")
 
 def get_action_from_llm(email_text: str, subject: str, sender: str) -> dict:
     prompt = f"""
