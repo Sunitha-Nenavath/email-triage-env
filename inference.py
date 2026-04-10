@@ -5,21 +5,31 @@ import requests
 from openai import OpenAI
 from pydantic import BaseModel
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-3.5-turbo")
-HF_TOKEN = os.getenv("HF_TOKEN")
-LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
+# 1. Hardware Env Vars Handling
+# Use 'or' instead of default in getenv to handle cases where var is set but empty ("")
+API_BASE_URL = os.getenv("API_BASE_URL") or "https://api.openai.com/v1"
+MODEL_NAME = os.getenv("MODEL_NAME") or "gpt-3.5-turbo"
+HF_TOKEN = os.getenv("HF_TOKEN") or ""
 
-if not HF_TOKEN:
-    print("Warning: HF_TOKEN environment variable not set. Using dummy client behavior or expecting local API.")
+# 2. Client Initialization with Error Handling
+try:
+    if not API_BASE_URL.startswith("http"):
+        # Ensure it's a valid URL format for httpx
+        API_BASE_URL = "https://api.openai.com/v1"
 
-client = OpenAI(
-    api_key=HF_TOKEN or "dummy-key",
-    base_url=API_BASE_URL,
-)
+    print(f"Initializing OpenAI client with Base URL: {API_BASE_URL} and Model: {MODEL_NAME}")
+    
+    client = OpenAI(
+        api_key=HF_TOKEN if HF_TOKEN else "dummy-key",
+        base_url=API_BASE_URL,
+    )
+except Exception as e:
+    print(f"Critical Error: Failed to initialize OpenAI client: {e}")
+    # Fallback to default if everything else fails
+    client = OpenAI(api_key="dummy-key")
 
 # Evaluator typically provides SERVER_URL, fallback to 7860 (Dockerfile port)
-SERVER_URL = os.getenv("SERVER_URL", "http://127.0.0.1:7860")
+SERVER_URL = os.getenv("SERVER_URL") or "http://127.0.0.1:7860"
 
 def get_action_from_llm(email_text: str, subject: str, sender: str) -> dict:
     prompt = f"""
