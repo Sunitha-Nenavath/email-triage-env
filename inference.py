@@ -16,7 +16,8 @@ def get_clean_env(var_name, default=""):
     return default
 
 # 1. Strict Env Var Handling (Directly matching validator expectations)
-API_BASE_URL = os.environ.get("API_BASE_URL") or os.environ.get("BASE_URL") 
+# Use 'or None' to ensure that an empty string "" becomes None, which OpenAI handles correctly.
+API_BASE_URL = os.environ.get("API_BASE_URL") or os.environ.get("BASE_URL") or None
 API_KEY = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN") or "dummy-key"
 MODEL_NAME = os.environ.get("MODEL_NAME") or "gpt-3.5-turbo"
 
@@ -30,8 +31,9 @@ try:
         base_url=API_BASE_URL,
     )
     print("DEBUG: OpenAI client initialized successfully.")
-except Exception as e:
+except BaseException as e:
     print(f"CRITICAL: Client init error: {e}")
+    # Fallback to default behavior
     client = OpenAI(api_key=API_KEY)
 
 # 3. Server URL and Connectivity Check
