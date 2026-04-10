@@ -16,8 +16,8 @@ def get_clean_env(var_name, default=""):
     return default
 
 # 1. Strict Env Var Handling (Directly matching validator expectations)
-# Use 'or None' to ensure that an empty string "" becomes None, which OpenAI handles correctly.
-API_BASE_URL = os.environ.get("API_BASE_URL") or os.environ.get("BASE_URL") or None
+# We use .get() and ensure empty strings are treated as None to prevent httpx crashes.
+API_BASE_URL = os.environ.get("API_BASE_URL") or None
 API_KEY = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN") or "dummy-key"
 MODEL_NAME = os.environ.get("MODEL_NAME") or "gpt-3.5-turbo"
 
@@ -27,14 +27,14 @@ print(f"DEBUG: Using API_BASE_URL={API_BASE_URL}")
 try:
     # We must pass base_url and api_key exactly as injected by the LiteLLM proxy
     client = OpenAI(
-        api_key=API_KEY,
-        base_url=API_BASE_URL,
+        api_key=API_KEY.strip() if API_KEY else "dummy-key",
+        base_url=API_BASE_URL.strip() if API_BASE_URL else None,
     )
     print("DEBUG: OpenAI client initialized successfully.")
 except BaseException as e:
     print(f"CRITICAL: Client init error: {e}")
     # Fallback to default behavior
-    client = OpenAI(api_key=API_KEY)
+    client = OpenAI(api_key=API_KEY if API_KEY else "dummy-key")
 
 # 3. Server URL and Connectivity Check
 SERVER_URL = os.environ.get("SERVER_URL") or "http://127.0.0.1:7860"

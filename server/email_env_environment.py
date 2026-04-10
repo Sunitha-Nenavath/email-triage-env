@@ -169,12 +169,12 @@ TASK_DESCRIPTIONS = {
 def grade_email(action: EmailAction, email: dict) -> tuple[float, dict]:
     """
     Grader for the requested reward function:
-    - Base score: 0.05 (to ensure score > 0.0)
-    - +0.45 if category is correct
-    - +0.45 if urgency is correct
-    - Max score: 0.95 (to ensure score < 1.0)
+    - Base score: 0.1 (to ensure score > 0.0)
+    - +0.4 if category is correct
+    - +0.4 if urgency is correct
+    - Max score: 0.9 (to ensure score < 1.0)
     """
-    score = 0.05
+    score = 0.1
     
     pred_category = action.category.strip().lower()
     true_category = email["true_category"]
@@ -186,11 +186,11 @@ def grade_email(action: EmailAction, email: dict) -> tuple[float, dict]:
     urg_correct = False
 
     if pred_category == true_category:
-        score += 0.45
+        score += 0.4
         cat_correct = True
         
     if pred_urgency == true_urgency:
-        score += 0.45
+        score += 0.4
         urg_correct = True
 
     return round(score, 3), {
@@ -239,7 +239,7 @@ class EmailTriageEnv:
         if self._current_email is None or self._task_id is None:
             return {
                 "state": {"error": "Environment not initialized."},
-                "reward": 0.0,
+                "reward": 0.1,
                 "done": True,
                 "info": {}
             }

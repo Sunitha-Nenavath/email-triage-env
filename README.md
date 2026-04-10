@@ -57,9 +57,11 @@ Companies receive hundreds of emails daily. This environment simulates the task 
 
 ## Reward Function
 
-- +0.5 if `category` is correct.
-- +0.5 if `urgency` is correct.
-- Total score range: `0.0` to `1.0`.
+- **Base Reward**: `0.1` (to ensure 0.0 is never returned).
+- **Correct Category**: `+0.4`.
+- **Correct Urgency**: `+0.4`.
+- **Total score range**: `0.1` (minimum) to `0.9` (maximum). 
+- This ensures all scores fall strictly within the `(0, 1)` interval as required by OpenEnv evaluation.
 
 ---
 
@@ -119,6 +121,7 @@ openenv push --repo-id your-username/email-triage-env
 
 | Variable | Description |
 |----------|-------------|
-| `API_BASE_URL` | LLM API endpoint (e.g. HF Inference API) |
-| `MODEL_NAME` | Model identifier for inference |
-| `HF_TOKEN` | Hugging Face token / API key |
+| `API_BASE_URL` | LLM API endpoint (e.g. Hugging Face Inference API) |
+| `API_KEY` | Your project API Key (or `HF_TOKEN`) |
+| `MODEL_NAME` | Model identifier for inference (e.g. `gpt-4o`) |
+| `HF_TOKEN` | Hugging Face Access Token |
