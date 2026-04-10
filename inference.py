@@ -17,23 +17,22 @@ def get_clean_env(var_name, default=""):
 
 API_BASE_URL = get_clean_env("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = get_clean_env("MODEL_NAME", "gpt-3.5-turbo")
-HF_TOKEN = get_clean_env("HF_TOKEN", "dummy-key")
+# Use API_KEY as primary, HF_TOKEN as fallback
+API_KEY = get_clean_env("API_KEY") or get_clean_env("HF_TOKEN") or "dummy-key"
 
 # 2. Ultra-Robust Client Initialization
 try:
-    print(f"DEBUG: Initializing client (Base URL: {API_BASE_URL}, Model: {MODEL_NAME})")
+    print(f"DEBUG: Initializing client with Base URL: {API_BASE_URL} and Model: {MODEL_NAME}")
     
-    # Don't pass base_url if it's the default OpenAI one, to avoid httpx issues
-    client_args = {"api_key": HF_TOKEN}
-    if API_BASE_URL and "api.openai.com" not in API_BASE_URL:
-        # Only use custom base_url if it's genuinely different
-        client_args["base_url"] = API_BASE_URL
-
-    client = OpenAI(**client_args)
+    # ALWAYS pass base_url and api_key as provided by the validator proxy
+    client = OpenAI(
+        api_key=API_KEY,
+        base_url=API_BASE_URL,
+    )
     print("DEBUG: Client successfully initialized.")
 except Exception as e:
     print(f"CRITICAL: Client init failed: {e}. Falling back to default.")
-    client = OpenAI(api_key="dummy-key")
+    client = OpenAI(api_key=API_KEY)
 
 # Evaluator typically provides SERVER_URL, fallback to 7860 (Dockerfile port)
 SERVER_URL = os.getenv("SERVER_URL") or "http://127.0.0.1:7860"
