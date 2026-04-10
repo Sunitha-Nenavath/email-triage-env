@@ -5,27 +5,34 @@ import requests
 from openai import OpenAI
 from pydantic import BaseModel
 
-# 1. Hardware Env Vars Handling
-# Use 'or' instead of default in getenv to handle cases where var is set but empty ("")
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://api.openai.com/v1"
-MODEL_NAME = os.getenv("MODEL_NAME") or "gpt-3.5-turbo"
-HF_TOKEN = os.getenv("HF_TOKEN") or ""
+# 1. Hardware Env Vars Handling with Strip and Junk Filtering
+def get_clean_env(var_name, default=""):
+    val = os.getenv(var_name)
+    if val:
+        val = val.strip().strip("'").strip('"')
+        if val.lower() in ["none", "null", "", "undefined"]:
+            return default
+        return val
+    return default
 
-# 2. Client Initialization with Error Handling
+API_BASE_URL = get_clean_env("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = get_clean_env("MODEL_NAME", "gpt-3.5-turbo")
+HF_TOKEN = get_clean_env("HF_TOKEN", "dummy-key")
+
+# 2. Ultra-Robust Client Initialization
 try:
-    if not API_BASE_URL.startswith("http"):
-        # Ensure it's a valid URL format for httpx
-        API_BASE_URL = "https://api.openai.com/v1"
-
-    print(f"Initializing OpenAI client with Base URL: {API_BASE_URL} and Model: {MODEL_NAME}")
+    print(f"DEBUG: Initializing client (Base URL: {API_BASE_URL}, Model: {MODEL_NAME})")
     
-    client = OpenAI(
-        api_key=HF_TOKEN if HF_TOKEN else "dummy-key",
-        base_url=API_BASE_URL,
-    )
+    # Don't pass base_url if it's the default OpenAI one, to avoid httpx issues
+    client_args = {"api_key": HF_TOKEN}
+    if API_BASE_URL and "api.openai.com" not in API_BASE_URL:
+        # Only use custom base_url if it's genuinely different
+        client_args["base_url"] = API_BASE_URL
+
+    client = OpenAI(**client_args)
+    print("DEBUG: Client successfully initialized.")
 except Exception as e:
-    print(f"Critical Error: Failed to initialize OpenAI client: {e}")
-    # Fallback to default if everything else fails
+    print(f"CRITICAL: Client init failed: {e}. Falling back to default.")
     client = OpenAI(api_key="dummy-key")
 
 # Evaluator typically provides SERVER_URL, fallback to 7860 (Dockerfile port)
