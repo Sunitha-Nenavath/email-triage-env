@@ -67,7 +67,7 @@ Companies receive hundreds of emails daily. This environment simulates the task 
 
 ```bash
 # Install dependencies
-pip install -r server/requirements.txt
+pip install -r requirements.txt
 
 # Start the environment server
 .\runenv.bat

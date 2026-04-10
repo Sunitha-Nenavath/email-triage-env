@@ -3,7 +3,7 @@ server/models.py
 Pydantic typed models for Email Triage OpenEnv Environment
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from typing import Any, Optional, Literal
 
 # ── Email Action Model ────────────────────────────────────────────────────────
