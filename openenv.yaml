@@ -25,7 +25,7 @@ tasks:
       urgency:
         type: string
         enum: [urgent, normal]
-    reward_range: [0.0, 1.0]
+    reward_range: [0.01, 0.99]
 
   - id: medium
     difficulty: medium
@@ -37,7 +37,7 @@ tasks:
       urgency:
         type: string
         enum: [urgent, normal]
-    reward_range: [0.0, 1.0]
+    reward_range: [0.01, 0.99]
 
   - id: hard
     difficulty: hard
@@ -49,7 +49,7 @@ tasks:
       urgency:
         type: string
         enum: [urgent, normal]
-    reward_range: [0.0, 1.0]
+    reward_range: [0.01, 0.99]
 
 observation_space:
   task_id: string
