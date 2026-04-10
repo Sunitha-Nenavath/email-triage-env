@@ -167,7 +167,14 @@ TASK_DESCRIPTIONS = {
 # ── Grader ────────────────────────────────────────────────────────────────────
 
 def grade_email(action: EmailAction, email: dict) -> tuple[float, dict]:
-    score = 0.0
+    """
+    Grader for the requested reward function:
+    - Base score: 0.05 (to ensure score > 0.0)
+    - +0.45 if category is correct
+    - +0.45 if urgency is correct
+    - Max score: 0.95 (to ensure score < 1.0)
+    """
+    score = 0.05
     
     pred_category = action.category.strip().lower()
     true_category = email["true_category"]
@@ -179,11 +186,11 @@ def grade_email(action: EmailAction, email: dict) -> tuple[float, dict]:
     urg_correct = False
 
     if pred_category == true_category:
-        score += 0.5
+        score += 0.45
         cat_correct = True
         
     if pred_urgency == true_urgency:
-        score += 0.5
+        score += 0.45
         urg_correct = True
 
     return round(score, 3), {

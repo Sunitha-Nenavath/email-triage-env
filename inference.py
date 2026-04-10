@@ -15,27 +15,42 @@ def get_clean_env(var_name, default=""):
         return val
     return default
 
-API_BASE_URL = get_clean_env("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = get_clean_env("MODEL_NAME", "gpt-3.5-turbo")
-# Use API_KEY as primary, HF_TOKEN as fallback
-API_KEY = get_clean_env("API_KEY") or get_clean_env("HF_TOKEN") or "dummy-key"
+# 1. Strict Env Var Handling (Directly matching validator expectations)
+API_BASE_URL = os.environ.get("API_BASE_URL") or os.environ.get("BASE_URL") 
+API_KEY = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN") or "dummy-key"
+MODEL_NAME = os.environ.get("MODEL_NAME") or "gpt-3.5-turbo"
 
-# 2. Ultra-Robust Client Initialization
+print(f"DEBUG: Using API_BASE_URL={API_BASE_URL}")
+
+# 2. Strict Client Initialization
 try:
-    print(f"DEBUG: Initializing client with Base URL: {API_BASE_URL} and Model: {MODEL_NAME}")
-    
-    # ALWAYS pass base_url and api_key as provided by the validator proxy
+    # We must pass base_url and api_key exactly as injected by the LiteLLM proxy
     client = OpenAI(
         api_key=API_KEY,
         base_url=API_BASE_URL,
     )
-    print("DEBUG: Client successfully initialized.")
+    print("DEBUG: OpenAI client initialized successfully.")
 except Exception as e:
-    print(f"CRITICAL: Client init failed: {e}. Falling back to default.")
+    print(f"CRITICAL: Client init error: {e}")
     client = OpenAI(api_key=API_KEY)
 
-# Evaluator typically provides SERVER_URL, fallback to 7860 (Dockerfile port)
-SERVER_URL = os.getenv("SERVER_URL") or "http://127.0.0.1:7860"
+# 3. Server URL and Connectivity Check
+SERVER_URL = os.environ.get("SERVER_URL") or "http://127.0.0.1:7860"
+
+def wait_for_server():
+    print(f"DEBUG: Checking server health at {SERVER_URL}...")
+    try:
+        res = requests.get(SERVER_URL, timeout=5)
+        if res.status_code == 200:
+            print("DEBUG: Server is UP and healthy.")
+            return True
+    except Exception as e:
+        print(f"DEBUG: Server not reachable yet: {e}")
+    return False
+
+# Ensure server is ready before starting tasks
+if not wait_for_server():
+    print("WARNING: Server health check failed, but proceeding anyway...")
 
 def get_action_from_llm(email_text: str, subject: str, sender: str) -> dict:
     prompt = f"""
