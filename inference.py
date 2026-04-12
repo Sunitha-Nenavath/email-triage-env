@@ -1,132 +1,141 @@
 import os
+import sys
 import json
+import requests
 from openai import OpenAI
+from pydantic import BaseModel
 
-# ✅ Safe environment variable reading with fallbacks
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-API_KEY = os.environ.get("API_KEY", os.environ.get("HF_TOKEN", "dummy-key"))
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
+# 1. Hardware Env Vars Handling with Strip and Junk Filtering
+def get_clean_env(var_name, default=""):
+    val = os.getenv(var_name)
+    if val:
+        val = val.strip().strip("'").strip('"')
+        if val.lower() in ["none", "null", "", "undefined"]:
+            return default
+        return val
+    return default
 
-# ✅ Initialize OpenAI client with the proxy
-client = OpenAI(
-    base_url=API_BASE_URL,
-    api_key=API_KEY
-)
+try:
+    _api_key = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN") or "dummy-key"
+    _base_url = os.environ.get("API_BASE_URL") or None
+    if _base_url:
+        _base_url = _base_url.rstrip("/")
+    MODEL_NAME = os.environ.get("MODEL_NAME") or "gpt-3.5-turbo"
+    
+    print(f"DEBUG: Initializing client (Base URL: {_base_url})")
+    
+    client = OpenAI(
+        api_key=_api_key,
+        base_url=_base_url,
+    )
+    print("DEBUG: OpenAI client initialized successfully.")
+except BaseException as e:
+    print(f"CRITICAL: Client init error: {e}")
+    client = OpenAI(api_key="dummy-key")
 
-TASKS = ["easy", "medium", "hard"]
+# 3. Server URL and Connectivity Check
+SERVER_URL = os.environ.get("SERVER_URL") or "http://127.0.0.1:7860"
 
-EMAILS = {
-    "easy": {
-        "sender": "spam@fake.com",
-        "subject": "Win money",
-        "email_text": "Claim prize now"
-    },
-    "medium": {
-        "sender": "newsletter@site.com",
-        "subject": "Weekly news",
-        "email_text": "Latest updates"
-    },
-    "hard": {
-        "sender": "phishing@fake.com",
-        "subject": "Account blocked",
-        "email_text": "Click to verify"
-    }
-}
-
-def call_llm(email_text: str, sender: str, subject: str) -> dict:
+def wait_for_server():
+    print(f"DEBUG: Checking server health at {SERVER_URL}...")
     try:
-        prompt = f"""You are an email triage assistant. Classify the following email.
+        res = requests.get(SERVER_URL, timeout=5)
+        if res.status_code == 200:
+            print("DEBUG: Server is UP and healthy.")
+            return True
+    except Exception as e:
+        print(f"DEBUG: Server not reachable yet: {e}")
+    return False
 
-Sender: {sender}
-Subject: {subject}
-Email: {email_text}
+# Ensure server is ready before starting tasks
+if not wait_for_server():
+    print("WARNING: Server health check failed, but proceeding anyway...")
 
-Respond ONLY with a valid JSON object in this exact format (no extra text):
-{{"category": "spam" or "important", "urgency": "urgent" or "normal"}}"""
+def get_action_from_llm(email_text: str, subject: str, sender: str) -> dict:
+    prompt = f"""
+    You are an AI Email Assistant. 
+    Classify the following email into a category (spam or important) and determine its urgency (urgent or normal).
+    
+    Sender: {sender}
+    Subject: {subject}
+    Email Text: {email_text}
 
+    Respond ONLY in valid JSON format with keys "category" and "urgency".
+    category must be either "spam" or "important".
+    urgency must be either "urgent" or "normal".
+    """
+
+    try:
+        # Note: 'response_format' is removed to improve compatibility with all proxy providers
         response = client.chat.completions.create(
             model=MODEL_NAME,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=100,
+            messages=[
+                {"role": "system", "content": "You are a helpful email triage assistant. Output only JSON."},
+                {"role": "user", "content": prompt}
+            ],
             temperature=0.0
         )
-
-        content = response.choices[0].message.content.strip()
-
-        # ✅ Clean markdown fences if present
+        content = response.choices[0].message.content
+        # Basic cleanup in case LLM adds markdown blocks
         content = content.replace("```json", "").replace("```", "").strip()
-
-        result = json.loads(content)
-
-        # ✅ Validate keys exist
-        if "category" not in result:
-            result["category"] = "spam"
-        if "urgency" not in result:
-            result["urgency"] = "normal"
-
-        return result
-
+        return json.loads(content)
     except Exception as e:
-        print(json.dumps({"type": "error", "message": str(e)}))
-        # ✅ Safe fallback so script never crashes
-        return {"category": "spam", "urgency": "normal"}
+        print(f"DEBUG: API Call Failed: {e}")
+        # Fallback to default in case of API issues
+        return {"category": "important", "urgency": "normal"}
 
+tasks = ["easy", "medium", "hard"]
 
-def run_task(task_id: str):
-    try:
-        email = EMAILS[task_id]
-
-        print(json.dumps({
-            "type": "[START]",
-            "task_id": task_id,
-            "observation": email
-        }))
-
-        action = call_llm(
-            email_text=email["email_text"],
-            sender=email["sender"],
-            subject=email["subject"]
+for task_id in tasks:
+    # 1. Reset Env
+    res = requests.post(f"{SERVER_URL}/reset", json={"task_id": task_id})
+    if res.status_code != 200:
+        print(f"Error resetting env for task {task_id}: {res.text}")
+        continue
+    
+    reset_data = res.json()
+    obs = reset_data.get("observation", {})
+    email_obj = obs.get("email", {})
+    
+    print(f"[START] task_id={task_id}")
+    
+    total_reward = 0.0
+    done = False
+    step_count = 1
+    
+    while not done:
+        # 2. Get action from LLM
+        action_dict = get_action_from_llm(
+            email_text=email_obj.get("email_text", ""),
+            subject=email_obj.get("subject", ""),
+            sender=email_obj.get("sender", "")
         )
-
-        print(json.dumps({
-            "type": "[STEP]",
-            "task_id": task_id,
-            "action": action
-        }))
-
-        # ✅ Score calculation
-        score = 0.2
-        if action.get("category") in ["spam", "important"]:
-            score += 0.4
-        if action.get("urgency") in ["urgent", "normal"]:
-            score += 0.4
-        score = round(max(0.01, min(score, 0.99)), 2)
-
-        print(json.dumps({
-            "type": "[END]",
-            "task_id": task_id,
-            "score": score,
-            "reward": score
-        }))
-
-        return score
-
-    except Exception as e:
-        print(json.dumps({"type": "error", "task_id": task_id, "message": str(e)}))
-        return 0.2
-
-
-if __name__ == "__main__":
-    total_score = 0.0
-
-    for task_id in TASKS:
-        score = run_task(task_id)
-        total_score += score
-
-    avg_score = round(total_score / len(TASKS), 2)
-
-    print(json.dumps({
-        "type": "[END]",
-        "task_id": "all",
-        "average_score": avg_score
-    }))
+        
+        # Ensure fallback format
+        if "category" not in action_dict or "urgency" not in action_dict:
+            action_dict = {"category": "important", "urgency": "normal"}
+            
+        action_payload = {
+            "category": action_dict["category"],
+            "urgency": action_dict["urgency"]
+        }
+        
+        # 3. Step Env
+        step_res = requests.post(f"{SERVER_URL}/step", json=action_payload)
+        if step_res.status_code != 200:
+            print(f"Error stepping env: {step_res.text}")
+            break
+            
+        step_data = step_res.json()
+        reward = step_data.get("reward", 0.0)
+        done = step_data.get("done", True)
+        
+        print(f"[STEP] step={step_count} reward={reward} action={json.dumps(action_payload)}")
+        
+        total_reward += float(reward)
+        step_count += 1
+        
+        if done:
+            break
+            
+    print(f"[END] task_id={task_id} total_reward={total_reward}")

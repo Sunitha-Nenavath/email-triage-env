@@ -13,10 +13,10 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 try:
-    from .models import EmailAction, EmailObservation
+    from .models import EmailAction, EmailObservation, EmailDetails
     from .email_env_environment import EmailTriageEnv
 except ImportError:
-    from models import EmailAction, EmailObservation
+    from models import EmailAction, EmailObservation, EmailDetails
     from email_env_environment import EmailTriageEnv
 
 app = FastAPI(title="Email Triage AI Environment")

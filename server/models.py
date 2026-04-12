@@ -14,10 +14,14 @@ class EmailAction(BaseModel):
 
 # ── Email Observation Model ───────────────────────────────────────────────────
 
-class EmailObservation(BaseModel):
+class EmailDetails(BaseModel):
+    subject: str
     email_text: str
     sender: str
-    subject: str
+
+class EmailObservation(BaseModel):
+    task_id: str
+    email: EmailDetails
 
 # ── Task info model ───────────────────────────────────────────────────────────
 

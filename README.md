@@ -52,6 +52,7 @@ Companies receive hundreds of emails daily. This environment simulates the task 
   }
 }
 ```
+Note: All fields are nested under the `email` key as per the OpenEnv schema.
 
 ---
 

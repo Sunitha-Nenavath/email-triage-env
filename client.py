@@ -12,7 +12,7 @@ from openenv.core import EnvClient
 from openenv.core.client_types import StepResult
 from openenv.core.env_server.types import State
 
-from .models import EmailAction, EmailObservation
+from .models import EmailAction, EmailObservation, EmailDetails
 
 
 class EmailEnv(
@@ -54,9 +54,7 @@ class EmailEnv(
         Returns:
             Dictionary representation suitable for JSON encoding
         """
-        return {
-            "message": action.message,
-        }
+        return action.model_dump()
 
     def _parse_result(self, payload: Dict) -> StepResult[EmailObservation]:
         """
@@ -69,12 +67,16 @@ class EmailEnv(
             StepResult with EmailObservation
         """
         obs_data = payload.get("observation", {})
+        
+        # Correctly reconstruct nested models
+        email_data = obs_data.get("email", {})
         observation = EmailObservation(
-            echoed_message=obs_data.get("echoed_message", ""),
-            message_length=obs_data.get("message_length", 0),
-            done=payload.get("done", False),
-            reward=payload.get("reward"),
-            metadata=obs_data.get("metadata", {}),
+            task_id=obs_data.get("task_id", ""),
+            email=EmailDetails(
+                subject=email_data.get("subject", ""),
+                email_text=email_data.get("email_text", ""),
+                sender=email_data.get("sender", "")
+            )
         )
 
         return StepResult(
